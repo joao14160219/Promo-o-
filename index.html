@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Processo Nº HL‑2026 — Movida · Heloa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FBF2E2;
+    --paper-line:#F0C68C;
+    --ink:#2B1B0E;
+    --ink-soft:rgba(43,27,14,0.62);
+    --orange-deep:#9A3B12;
+    --orange:#E07A29;
+    --orange-light:#F4C79A;
+    --orange-red:#C2410C;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    min-height:100vh;
+    background:
+      linear-gradient(180deg, rgba(154,59,18,0.06), transparent 220px),
+      var(--paper);
+    background-attachment:fixed;
+    color:var(--ink);
+    font-family:'Source Serif 4', serif;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:28px 16px;
+    position:relative;
+    overflow-x:hidden;
+  }
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(43,27,14,0.025) 0px, rgba(43,27,14,0.025) 1px, transparent 1px, transparent 3px);
+    pointer-events:none;
+    z-index:0;
+  }
+
+  body.expired{ background:#000 !important; overflow:hidden; }
+  body.expired::before{ display:none; }
+  body.expired .folder, body.expired #confetti, body.expired #loading-overlay{ display:none !important; }
+  #expired-screen{
+    display:none; position:fixed; inset:0; background:#000; color:#fff;
+    z-index:100; align-items:center; justify-content:center; flex-direction:column;
+    font-family:'IBM Plex Mono', monospace; text-align:center; padding:24px;
+  }
+  body.expired #expired-screen{ display:flex; }
+  #expired-screen p{ color:rgba(255,255,255,0.55); font-size:13px; letter-spacing:0.06em; margin:0; }
+  #expired-screen .big{ font-size:15px; color:rgba(255,255,255,0.85); margin-bottom:12px; }
+
+  /* ===== LOADING FAKE ===== */
+  #loading-overlay{
+    display:none;
+    position:fixed; inset:0; z-index:50;
+    background:rgba(251,242,226,0.92);
+    align-items:center; justify-content:center; flex-direction:column;
+    font-family:'IBM Plex Mono', monospace;
+  }
+  #loading-overlay.show{ display:flex; animation:fadeOverlay .25s ease; }
+  @keyframes fadeOverlay{ from{ opacity:0; } to{ opacity:1; } }
+  .loading-dot{
+    width:10px; height:10px; border-radius:50%;
+    background:var(--orange-deep);
+    margin-bottom:16px;
+    animation:loadPulse 1s ease-in-out infinite;
+  }
+  @keyframes loadPulse{
+    0%,100%{ transform:scale(1); opacity:1; }
+    50%{ transform:scale(1.35); opacity:0.6; }
+  }
+  #loading-overlay p{
+    margin:0; font-size:12px; letter-spacing:0.08em;
+    color:var(--ink-soft); text-transform:uppercase;
+  }
+
+  .folder{
+    position:relative; z-index:1;
+    width:100%; max-width:460px;
+    background:#FDF8EE;
+    border:1px solid var(--paper-line);
+    box-shadow:0 1px 0 #fff inset, 0 24px 50px rgba(122,49,15,0.16);
+    min-height:560px;
+    display:flex; flex-direction:column;
+    perspective:1200px;
+  }
+  .folder.shake{ animation:shakeScreen .35s ease; }
+  @keyframes shakeScreen{
+    0%,100%{ transform:translate(0,0); }
+    20%{ transform:translate(-4px,2px); }
+    40%{ transform:translate(4px,-2px); }
+    60%{ transform:translate(-3px,1px); }
+    80%{ transform:translate(3px,-1px); }
+  }
+
+  .tab{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 20px; background:var(--orange-deep); color:var(--paper);
+  }
+  .tab .proc{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px; letter-spacing:0.04em; color:var(--orange-light);
+  }
+  .tab .name{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px; color:rgba(251,242,226,0.8);
+  }
+
+  .sheet{
+    padding:34px 28px 24px;
+    flex:1; display:flex; flex-direction:column;
+    position:relative;
+  }
+
+  /* ===== TRANSIÇÃO FLIP ===== */
+  .page{
+    display:none;
+    flex:1;
+    flex-direction:column;
+    opacity:0;
+    transform-origin: top center;
+    backface-visibility: hidden;
+    width:100%;
+  }
+  .page.active{
+    display:flex;
+    position:relative;
+    animation: pageFlipIn .55s cubic-bezier(.22,1,.36,1) forwards;
+  }
+  .page.leaving{
+    display:flex !important;
+    position:absolute;
+    left:28px; right:28px; top:34px;
+    animation: pageFlipOut .38s cubic-bezier(.4,0,.2,1) forwards;
+    pointer-events:none;
+    z-index:2;
+  }
+  @keyframes pageFlipIn{
+    0%{
+      opacity:0;
+      transform: perspective(1000px) rotateX(-14deg) translateY(28px);
+      filter: brightness(0.94);
+    }
+    100%{
+      opacity:1;
+      transform: perspective(1000px) rotateX(0) translateY(0);
+      filter: brightness(1);
+    }
+  }
+  @keyframes pageFlipOut{
+    0%{
+      opacity:1;
+      transform: perspective(1000px) rotateX(0) translateY(0);
+    }
+    100%{
+      opacity:0;
+      transform: perspective(1000px) rotateX(10deg) translateY(-18px);
+      filter: brightness(0.95);
+    }
+  }
+
+  .kicker{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px; letter-spacing:0.05em;
+    color:var(--orange); margin:0 0 10px;
+  }
+  h1{
+    font-family:'Fraunces', serif; font-weight:600;
+    font-size:clamp(24px,6vw,30px); line-height:1.28;
+    margin:0 0 14px; color:var(--ink);
+  }
+  .rule{ height:1px; background:var(--paper-line); margin:0 0 20px; }
+  p{ font-size:16.5px; line-height:1.65; color:var(--ink-soft); margin:0 0 14px; }
+  p.small{
+    font-family:'IBM Plex Mono', monospace; font-size:12px;
+    color:var(--ink-soft); letter-spacing:0.01em;
+  }
+  .spacer{ flex:1; }
+
+  .actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:18px; }
+  .btn{
+    font-family:'IBM Plex Mono', monospace; font-size:13px; letter-spacing:0.03em;
+    background:var(--orange-deep); color:var(--paper);
+    border:none; padding:13px 22px; cursor:pointer;
+    transition:background .2s ease, transform .2s ease;
+  }
+  .btn:hover{ background:#7E3010; transform:translateY(-1px); }
+  .btn:focus-visible{ outline:2px solid var(--orange); outline-offset:2px; }
+  .btn.ghost{ background:transparent; color:var(--ink); border:1px solid var(--paper-line); }
+  .btn.ghost:hover{ background:rgba(224,122,41,0.08); }
+  .btn.wide{ width:100%; text-align:center; }
+
+  .footer{
+    padding:12px 28px 20px;
+    display:flex; align-items:center; justify-content:space-between;
+    border-top:1px solid var(--paper-line);
+  }
+  .stamps{ display:flex; gap:6px; }
+  .stamps .m{
+    width:7px; height:7px; border-radius:50%;
+    border:1px solid var(--orange); background:transparent;
+  }
+  .stamps .m.done{ background:var(--orange); }
+  .footer .foot-label{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--ink-soft);
+  }
+
+  .timeline{ margin:6px 0 8px; }
+  .tl-item{
+    display:flex; gap:14px; align-items:flex-start;
+    opacity:0; transform:translateX(-8px);
+    animation:tlIn .5s ease forwards;
+  }
+  .tl-item .dot{
+    width:9px; height:9px; border-radius:50%;
+    background:var(--orange); margin-top:7px; flex-shrink:0; position:relative;
+  }
+  .tl-item .dot::after{
+    content:""; position:absolute; left:3.5px; top:12px;
+    width:1px; height:34px; background:var(--paper-line);
+  }
+  .tl-item:last-child .dot::after{ display:none; }
+  .tl-item .label{ padding-bottom:22px; }
+  .tl-item .label .yr{
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px;
+    color:var(--ink-soft); display:block; margin-bottom:2px;
+  }
+  .tl-item .label .txt{ font-family:'Fraunces', serif; font-size:17px; }
+  .tl-item.gold .dot{ background:var(--orange-red); }
+  @keyframes tlIn{ to{ opacity:1; transform:translateX(0); } }
+
+  .options{ display:flex; flex-direction:column; gap:10px; margin:6px 0 4px; }
+  .opt{
+    text-align:left; background:transparent; border:1px solid var(--paper-line);
+    padding:13px 16px; font-family:'Source Serif 4', serif; font-size:15.5px;
+    color:var(--ink); cursor:pointer;
+    transition:border-color .2s, background .2s, opacity .35s, transform .35s, max-height .35s, padding .35s, margin .35s;
+  }
+  .opt:hover{ border-color:var(--orange); background:rgba(224,122,41,0.08); }
+  .opt:focus-visible{ outline:2px solid var(--orange); outline-offset:2px; }
+  .opt.picked{ border-color:var(--orange); background:rgba(224,122,41,0.14); }
+  .opt.wrong{
+    border-color:#B91C1C; background:rgba(185,28,28,0.12); color:#7F1D1D;
+    animation:shakeBtn .4s ease;
+  }
+  .opt.gone{
+    opacity:0; transform:scale(0.92); max-height:0;
+    padding-top:0; padding-bottom:0; margin:0; border-width:0;
+    pointer-events:none; overflow:hidden;
+  }
+  .opt.correct-hint{
+    border-color:var(--orange); background:rgba(224,122,41,0.14);
+    box-shadow:0 0 0 2px rgba(224,122,41,0.25);
+  }
+  @keyframes shakeBtn{
+    0%,100%{ transform:translateX(0); }
+    20%{ transform:translateX(-6px); }
+    40%{ transform:translateX(6px); }
+    60%{ transform:translateX(-4px); }
+    80%{ transform:translateX(4px); }
+  }
+
+  .invite-actions{ display:flex; flex-direction:column; gap:10px; margin-top:auto; position:relative; }
+  #btn-sim{
+    transition: transform .35s cubic-bezier(.34,1.4,.64,1), font-size .35s, padding .35s;
+    z-index:2; position:relative;
+  }
+  #btn-sim.grow-1{ transform:scale(1.15); font-size:15px; }
+  #btn-sim.grow-2{ transform:scale(1.35); font-size:17px; padding:16px 22px; }
+  #btn-sim.grow-3{ transform:scale(1.6); font-size:19px; padding:18px 24px; }
+  #btn-sim.grow-4{ transform:scale(1.9); font-size:22px; padding:22px 28px; }
+  #btn-sim.fill-screen{
+    position:fixed; inset:0; z-index:20; border-radius:0; transform:none;
+    font-size:clamp(28px,8vw,48px); display:flex; align-items:center; justify-content:center;
+    padding:0; animation:fillIn .55s cubic-bezier(.22,1,.36,1) forwards;
+  }
+  @keyframes fillIn{ from{ opacity:.7; transform:scale(.6); } to{ opacity:1; transform:scale(1); } }
+  #btn-nao{ transition: opacity .3s, transform .3s; }
+  #btn-nao.hiding{ opacity:0; transform:scale(0.9); pointer-events:none; }
+  #reconsider{ display:none; }
+  #reconsider.show{ display:block; }
+
+  .suggestion{
+    border:1px solid var(--orange); background:rgba(224,122,41,0.08);
+    padding:12px 14px; margin-bottom:18px;
+  }
+  .suggestion p{ margin:0; color:var(--ink); font-size:15px; }
+  .cal-header{
+    display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;
+  }
+  .cal-nav{
+    background:none; border:none; cursor:pointer;
+    color:var(--orange-deep); font-size:16px; padding:4px 8px;
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .cal-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px; letter-spacing:0.03em; text-transform:capitalize;
+  }
+  .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:6px; }
+  .cal-grid .dow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px; text-align:center; color:var(--ink-soft); padding-bottom:4px;
+  }
+  .cal-grid .day{
+    aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+    font-size:13px; border:1px solid transparent; border-radius:50%;
+    cursor:pointer; color:var(--ink); position:relative;
+  }
+  .cal-grid .day:hover{ border-color:var(--orange); }
+  .cal-grid .day.disabled{ color:rgba(43,27,14,0.22); cursor:default; pointer-events:none; }
+  .cal-grid .day.suggested{
+    background:var(--orange-light); font-weight:600; border-color:var(--orange);
+  }
+  .cal-grid .day.selected{
+    background:var(--orange-deep); color:var(--paper); border-color:var(--orange-deep);
+  }
+  /* coração pulsando no dia 4 */
+  .cal-grid .day.suggested::after{
+    content:"♥";
+    position:absolute; top:-2px; right:-1px;
+    font-size:9px; color:var(--orange-red);
+    line-height:1;
+    animation:heartPulse 1.6s ease-in-out infinite;
+    pointer-events:none;
+  }
+  .cal-grid .day.selected::after{ color:var(--orange-light); }
+  @keyframes heartPulse{
+    0%,100%{ transform:scale(1); opacity:0.75; }
+    50%{ transform:scale(1.25); opacity:1; }
+  }
+
+  .time-picker{
+    display:none; margin-top:14px; border:1px solid var(--paper-line);
+    padding:14px; background:rgba(253,248,238,0.9);
+  }
+  .time-picker.show{ display:block; animation:sheetIn .35s ease; }
+  @keyframes sheetIn{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:translateY(0); } }
+  .time-picker .tp-label{
+    font-family:'IBM Plex Mono', monospace; font-size:11px;
+    letter-spacing:0.04em; color:var(--orange); margin:0 0 10px;
+  }
+  .time-options{ display:flex; flex-wrap:wrap; gap:8px; }
+  .time-opt{
+    font-family:'IBM Plex Mono', monospace; font-size:13px;
+    padding:10px 14px; border:1px solid var(--paper-line);
+    background:transparent; color:var(--ink); cursor:pointer;
+    transition:border-color .2s, background .2s;
+  }
+  .time-opt:hover{ border-color:var(--orange); background:rgba(224,122,41,0.08); }
+  .time-opt.picked{ border-color:var(--orange-deep); background:var(--orange-deep); color:var(--paper); }
+
+  .email-block{
+    display:none; margin-top:14px; border:1px solid var(--paper-line);
+    padding:14px; background:rgba(253,248,238,0.9);
+  }
+  .email-block.show{ display:block; animation:sheetIn .35s ease; }
+  .email-block label{
+    font-family:'IBM Plex Mono', monospace; font-size:11px;
+    letter-spacing:0.04em; color:var(--orange); display:block; margin:0 0 8px;
+  }
+  .email-block input{
+    width:100%; padding:11px 12px; border:1px solid var(--paper-line);
+    background:rgba(255,255,255,0.6); color:var(--ink);
+    font-family:'Source Serif 4', serif; font-size:15px;
+    margin-bottom:10px;
+  }
+  .email-block input:focus{ outline:2px solid var(--orange); outline-offset:1px; border-color:var(--orange); }
+  .email-block .email-erro{
+    display:none; font-family:'IBM Plex Mono', monospace; font-size:11px;
+    color:#B91C1C; margin:0 0 8px;
+  }
+  .email-block .email-erro.show{ display:block; }
+
+  /* ===== TIMER FINAL ===== */
+  .countdown{
+    border:1px solid var(--paper-line);
+    background:rgba(224,122,41,0.06);
+    padding:16px 14px; margin:0 0 16px;
+  }
+  .countdown .cd-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px; letter-spacing:0.08em; color:var(--orange);
+    margin:0 0 12px; text-transform:uppercase;
+  }
+  .countdown .cd-grid{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:8px; text-align:center;
+  }
+  .countdown .cd-unit{
+    background:rgba(253,248,238,0.9);
+    border:1px solid var(--paper-line);
+    padding:10px 4px 8px;
+  }
+  .countdown .cd-num{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:22px; font-weight:500; color:var(--ink);
+    display:block; line-height:1.1;
+  }
+  .countdown .cd-txt{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:9px; letter-spacing:0.06em; color:var(--ink-soft);
+    text-transform:uppercase;
+  }
+  .countdown.done .cd-num{ color:var(--orange-red); }
+
+  #confetti{ position:fixed; inset:0; z-index:5; pointer-events:none; }
+  .confetti-piece{
+    position:absolute; top:-14px; width:7px; height:11px; opacity:0.9;
+    animation:fall linear forwards;
+  }
+  @keyframes fall{ to{ transform:translateY(110vh) rotate(540deg); opacity:0.15; } }
+
+  @media (prefers-reduced-motion: reduce){
+    .page, .page.active, .page.leaving{
+      animation:none !important; opacity:1; transform:none; filter:none;
+    }
+    .page:not(.active){ display:none !important; }
+    .tl-item, .confetti-piece, .cal-grid .day.suggested::after,
+    .opt.wrong, .folder.shake, #btn-sim.fill-screen, .loading-dot{ animation:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div id="expired-screen">
+  <p class="big">PROCESSO ENCERRADO</p>
+  <p>Prazo expirado · 01/09/2026 23:59</p>
+</div>
+
+<div id="loading-overlay">
+  <div class="loading-dot"></div>
+  <p>Registrando resposta…</p>
+</div>
+
+<div id="confetti"></div>
+
+<div class="folder">
+  <div class="tab">
+    <span class="proc">PROCESSO Nº HL‑2026 · MOVIDA</span>
+    <span class="name">HELOA</span>
+  </div>
+
+  <div class="sheet">
+
+    <div class="page active" id="page-1">
+      <p class="kicker">Registro 01 — Abertura de processo</p>
+      <h1>Relatório de acompanhamento de performance</h1>
+      <div class="rule"></div>
+      <p>Documento de uso interno — Movida. Destinado ao registro formal de evolução profissional e reconhecimento de resultados.</p>
+      <p class="small">Classificação: confidencial · Área de Pessoas · 2026</p>
+      <div class="spacer"></div>
+      <div class="actions">
+        <button class="btn" onclick="goTo(2)">Continuar</button>
+      </div>
+    </div>
+
+    <div class="page" id="page-2">
+      <p class="kicker">Registro 02 — Histórico de evolução</p>
+      <h1>Linha do tempo de carreira</h1>
+      <div class="rule"></div>
+      <div class="timeline" id="timeline"></div>
+      <p id="tl-final" style="display:none; font-family:'Fraunces', serif; font-style:italic; font-size:16px; color:var(--ink);">Resultado registrado e validado pela área.</p>
+      <div class="spacer"></div>
+      <div class="actions">
+        <button class="btn" onclick="goTo(3)">Próxima página</button>
+      </div>
+    </div>
+
+    <div class="page" id="page-3">
+      <p class="kicker">Registro 03 — Avaliação de impacto</p>
+      <h1>Quais mudanças costumam acompanhar uma promoção?</h1>
+      <div class="rule"></div>
+      <div class="options" id="quiz-options">
+        <button class="opt" data-correct="0" onclick="pickOpt(this)">Aumento de responsabilidades</button>
+        <button class="opt" data-correct="0" onclick="pickOpt(this)">Mais reuniões e alinhamentos</button>
+        <button class="opt" data-correct="0" onclick="pickOpt(this)">Maior pressão por resultados</button>
+        <button class="opt" data-correct="0" onclick="pickOpt(this)">Todas as anteriores</button>
+        <button class="opt" data-correct="1" onclick="pickOpt(this)">Sair com o João na sexta</button>
+      </div>
+      <div class="spacer"></div>
+    </div>
+
+    <div class="page" id="page-4">
+      <p class="kicker">Registro 04 — Convite</p>
+      <h1>Então essa é a análise necessária.</h1>
+      <div class="rule"></div>
+      <p style="font-family:'Fraunces', serif; font-style:italic; font-size:19px; color:var(--ink);">Sair com o João para comemorar sua promoção?</p>
+      <div class="spacer"></div>
+      <div class="invite-actions" id="invite-actions">
+        <button class="btn wide" id="btn-sim" onclick="goTo(5)">✅ Sim</button>
+        <button class="btn ghost wide" id="btn-nao" onclick="sayNo()">❌ Não</button>
+        <p class="small" id="reconsider">Hmm… tem certeza?</p>
+      </div>
+    </div>
+
+    <div class="page" id="page-5">
+      <p class="kicker">Registro 05 — Agenda</p>
+      <h1>Escolha o dia</h1>
+      <div class="rule"></div>
+      <div class="suggestion">
+        <p id="suggestion-text">Já separei sexta, dia 4, como proposta.</p>
+      </div>
+      <div class="cal-header">
+        <button class="cal-nav" id="cal-prev" type="button">‹</button>
+        <span class="cal-label" id="cal-month-label"></span>
+        <button class="cal-nav" id="cal-next" type="button">›</button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div class="time-picker" id="time-picker">
+        <p class="tp-label">Escolha o horário</p>
+        <div class="time-options" id="time-options">
+          <button class="time-opt" onclick="pickTime(this, '19:00')">19:00</button>
+          <button class="time-opt" onclick="pickTime(this, '19:30')">19:30</button>
+          <button class="time-opt" onclick="pickTime(this, '20:00')">20:00</button>
+          <button class="time-opt" onclick="pickTime(this, '20:30')">20:30</button>
+          <button class="time-opt" onclick="pickTime(this, '21:00')">21:00</button>
+          <button class="time-opt" onclick="pickTime(this, '21:30')">21:30</button>
+          <button class="time-opt" onclick="pickTime(this, '22:00')">22:00</button>
+        </div>
+      </div>
+      <div class="spacer"></div>
+    </div>
+
+    <div class="page" id="page-6">
+      <p class="kicker">Registro 06 — Encerramento</p>
+      <h1>Perfeito.</h1>
+      <div class="rule"></div>
+      <p id="final-date"></p>
+      <div class="countdown" id="countdown">
+        <p class="cd-label">Contagem até o encontro</p>
+        <div class="cd-grid">
+          <div class="cd-unit"><span class="cd-num" id="cd-d">00</span><span class="cd-txt">dias</span></div>
+          <div class="cd-unit"><span class="cd-num" id="cd-h">00</span><span class="cd-txt">horas</span></div>
+          <div class="cd-unit"><span class="cd-num" id="cd-m">00</span><span class="cd-txt">min</span></div>
+          <div class="cd-unit"><span class="cd-num" id="cd-s">00</span><span class="cd-txt">seg</span></div>
+        </div>
+      </div>
+      <p>Fique pronta que o restante é comigo.</p>
+      <div class="spacer"></div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    <div class="stamps" id="stamps"></div>
+    <span class="foot-label" id="foot-label">01 / 06</span>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>
+/* ========== EmailJS (mesma conta do outro site) ========== */
+const EMAILJS_PUBLIC_KEY  = "d_vqCswosM6WznK-Y";
+const EMAILJS_SERVICE_ID  = "service_lfccq7g";
+const EMAILJS_TEMPLATE_ID = "template_ue3v5lz";
+/* e-mail dela — envio automático, sem formulário */
+const EMAIL_DESTINO = "heloaferreira88@icloud.com";
+const emailjsAtivo = !EMAILJS_PUBLIC_KEY.includes("SUA_PUBLIC_KEY");
+if (emailjsAtivo && window.emailjs) {
+  emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+}
+
+const EXPIRA_EM = new Date(2026, 8, 1, 23, 59, 0);
+
+function checarPrazo(){
+  if (new Date() >= EXPIRA_EM){
+    document.body.classList.add("expired");
+    return true;
+  }
+  return false;
+}
+checarPrazo();
+setInterval(checarPrazo, 30000);
+
+const TOTAL = 6;
+let current = 1;
+let escolha = null;
+let horario = null;
+let noClicks = 0;
+let transitioning = false;
+let countdownTimer = null;
+
+function renderStamps(){
+  const wrap = document.getElementById("stamps");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+  for (let i = 1; i <= TOTAL; i++){
+    const s = document.createElement("span");
+    s.className = "m" + (i <= current ? " done" : "");
+    wrap.appendChild(s);
+  }
+  document.getElementById("foot-label").textContent =
+    String(current).padStart(2,"0") + " / " + String(TOTAL).padStart(2,"0");
+}
+
+function goTo(n){
+  if (document.body.classList.contains("expired")) return;
+  if (transitioning || n === current) return;
+  transitioning = true;
+
+  const prev = document.getElementById("page-" + current);
+  const next = document.getElementById("page-" + n);
+
+  // limpa qualquer estado residual
+  document.querySelectorAll(".page").forEach(p => {
+    if (p !== prev) {
+      p.classList.remove("active", "leaving");
+      p.style.display = "none";
+    }
+  });
+
+  // saída da página atual
+  prev.classList.remove("active");
+  prev.classList.add("leaving");
+
+  // entrada da próxima
+  next.classList.remove("leaving");
+  next.style.display = "flex";
+  // reinicia animação
+  next.classList.remove("active");
+  void next.offsetWidth;
+  next.classList.add("active");
+
+  setTimeout(() => {
+    prev.classList.remove("leaving");
+    prev.style.display = "none";
+    transitioning = false;
+  }, 400);
+
+  current = n;
+  renderStamps();
+  if (n === 2) renderTimeline();
+  if (n === 5) initCalendario();
+  if (n === 6){
+    launchConfetti();
+    startCountdown();
+  }
+}
+
+function renderTimeline(){
+  const el = document.getElementById("timeline");
+  if (el.dataset.done) return;
+  el.dataset.done = "1";
+  const steps = [
+    { yr:"Início", txt:"Admissão na Movida" },
+    { yr:"Depois", txt:"Primeiros entregáveis" },
+    { yr:"Em seguida", txt:"Ampliação de escopo" },
+    { yr:"Hoje", txt:"Promoção formalizada", gold:true }
+  ];
+  steps.forEach((s, i) => {
+    const item = document.createElement("div");
+    item.className = "tl-item" + (s.gold ? " gold" : "");
+    item.style.animationDelay = (i * 0.35) + "s";
+    item.innerHTML = '<div class="dot"></div><div class="label"><span class="yr">' + s.yr + '</span><span class="txt">' + s.txt + '</span></div>';
+    el.appendChild(item);
+  });
+  setTimeout(() => {
+    document.getElementById("tl-final").style.display = "block";
+  }, steps.length * 350 + 300);
+}
+
+function shakeFolder(){
+  const folder = document.querySelector(".folder");
+  folder.classList.remove("shake");
+  void folder.offsetWidth;
+  folder.classList.add("shake");
+  setTimeout(() => folder.classList.remove("shake"), 400);
+}
+
+function pickOpt(btn){
+  if (btn.dataset.correct === "1"){
+    document.querySelectorAll(".opt").forEach(o => {
+      o.classList.remove("wrong","correct-hint");
+      if (o !== btn) o.classList.add("gone");
+    });
+    btn.classList.add("picked","correct-hint");
+    setTimeout(() => goTo(4), 550);
+    return;
+  }
+  btn.classList.add("wrong");
+  shakeFolder();
+  setTimeout(() => {
+    btn.classList.add("gone");
+    const remaining = [...document.querySelectorAll(".opt")].filter(
+      o => !o.classList.contains("gone") && o.dataset.correct !== "1"
+    );
+    if (remaining.length === 0){
+      const correct = document.querySelector('.opt[data-correct="1"]');
+      if (correct) correct.classList.add("correct-hint");
+    }
+  }, 420);
+}
+
+function sayNo(){
+  noClicks++;
+  const sim = document.getElementById("btn-sim");
+  const nao = document.getElementById("btn-nao");
+  const msg = document.getElementById("reconsider");
+  msg.classList.add("show");
+  const messages = [
+    "Hmm… tem certeza?",
+    "Pensa de novo 👀",
+    "Última chance de clicar em Não…",
+    "O Sim está tomando conta…"
+  ];
+  msg.textContent = messages[Math.min(noClicks - 1, messages.length - 1)];
+  sim.classList.remove("grow-1","grow-2","grow-3","grow-4");
+  if (noClicks === 1) sim.classList.add("grow-1");
+  else if (noClicks === 2) sim.classList.add("grow-2");
+  else if (noClicks === 3) sim.classList.add("grow-3");
+  else if (noClicks === 4) sim.classList.add("grow-4");
+  else {
+    nao.classList.add("hiding");
+    sim.classList.add("fill-screen");
+    sim.textContent = "✅ SIM";
+    setTimeout(() => {
+      sim.classList.remove("fill-screen","grow-1","grow-2","grow-3","grow-4");
+      sim.style.cssText = "";
+      sim.textContent = "✅ Sim";
+      goTo(5);
+    }, 900);
+  }
+}
+
+const MESES = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+const DIAS_SEMANA = ["D","S","T","Q","Q","S","S"];
+const hoje = new Date();
+hoje.setHours(0,0,0,0);
+const sextaSugerida = new Date(2026, 8, 4);
+sextaSugerida.setHours(0,0,0,0);
+let calAno = sextaSugerida.getFullYear();
+let calMes = sextaSugerida.getMonth();
+let calInitDone = false;
+
+function initCalendario(){
+  document.getElementById("suggestion-text").textContent =
+    "Já separei sexta, dia " + sextaSugerida.getDate() + " de " + MESES[sextaSugerida.getMonth()] + ", como proposta — mas o calendário é todo seu.";
+  document.getElementById("time-picker").classList.remove("show");
+  calAno = sextaSugerida.getFullYear();
+  calMes = sextaSugerida.getMonth();
+  renderCalendario();
+  if (!calInitDone){
+    document.getElementById("cal-prev").addEventListener("click", () => {
+      calMes--; if (calMes < 0){ calMes = 11; calAno--; }
+      document.getElementById("time-picker").classList.remove("show");
+      renderCalendario();
+    });
+    document.getElementById("cal-next").addEventListener("click", () => {
+      calMes++; if (calMes > 11){ calMes = 0; calAno++; }
+      document.getElementById("time-picker").classList.remove("show");
+      renderCalendario();
+    });
+    calInitDone = true;
+  }
+}
+
+function renderCalendario(){
+  document.getElementById("cal-month-label").textContent = MESES[calMes] + " de " + calAno;
+  const grid = document.getElementById("cal-grid");
+  grid.innerHTML = DIAS_SEMANA.map(d => '<div class="dow">' + d + '</div>').join("");
+  const primeiroDiaSemana = new Date(calAno, calMes, 1).getDay();
+  const totalDias = new Date(calAno, calMes + 1, 0).getDate();
+  for (let i = 0; i < primeiroDiaSemana; i++){
+    grid.insertAdjacentHTML("beforeend", '<div class="day disabled"></div>');
+  }
+  for (let dia = 1; dia <= totalDias; dia++){
+    const dataAtual = new Date(calAno, calMes, dia);
+    dataAtual.setHours(0,0,0,0);
+    const desabilitado = dataAtual < hoje;
+    const ehSugerida = dataAtual.getTime() === sextaSugerida.getTime();
+    const selecionada = escolha &&
+      escolha.getFullYear() === calAno && escolha.getMonth() === calMes && escolha.getDate() === dia;
+    grid.insertAdjacentHTML("beforeend",
+      '<div class="day' + (desabilitado ? " disabled" : "") + (ehSugerida && !selecionada ? " suggested" : "") + (selecionada ? " selected" : "") + '" data-dia="' + dia + '">' + dia + '</div>'
+    );
+  }
+  grid.querySelectorAll(".day:not(.disabled)").forEach(el => {
+    el.addEventListener("click", () => {
+      const dia = parseInt(el.dataset.dia, 10);
+      const dataClicada = new Date(calAno, calMes, dia);
+      dataClicada.setHours(0,0,0,0);
+      if (dataClicada.getTime() !== sextaSugerida.getTime()){
+        shakeFolder();
+        calAno = sextaSugerida.getFullYear();
+        calMes = sextaSugerida.getMonth();
+        document.getElementById("time-picker").classList.remove("show");
+        renderCalendario();
+        return;
+      }
+      escolha = dataClicada;
+      renderCalendario();
+      document.getElementById("time-picker").classList.add("show");
+      document.querySelectorAll(".time-opt").forEach(t => t.classList.remove("picked"));
+    });
+  });
+}
+
+function pickTime(btn, hora){
+  document.querySelectorAll(".time-opt").forEach(t => t.classList.remove("picked"));
+  btn.classList.add("picked");
+  horario = hora;
+
+  const dataFormatada = escolha
+    ? escolha.toLocaleDateString("pt-BR", { day:"2-digit", month:"long", year:"numeric" })
+    : "";
+  const dataHora = dataFormatada + (horario ? " às " + horario : "");
+
+  const overlay = document.getElementById("loading-overlay");
+  overlay.classList.add("show");
+
+  enviarEmailConfirmacao(dataHora).finally(() => {
+    setTimeout(() => {
+      overlay.classList.remove("show");
+      goTo(6);
+    }, 1000);
+  });
+}
+
+async function enviarEmailConfirmacao(dataHora){
+  if (!emailjsAtivo || !window.emailjs) {
+    console.warn("EmailJS não configurado — e-mail não enviado.");
+    return;
+  }
+  try {
+    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      to_email: EMAIL_DESTINO,
+      data_jantar: dataHora,
+      restaurante: "Comemoração da promoção · Heloa"
+    });
+  } catch (e) {
+    console.error("Falha ao enviar e-mail:", e);
+  }
+}
+
+function getEncontroDate(){
+  if (!escolha) return null;
+  const d = new Date(escolha);
+  if (horario){
+    const parts = horario.split(":");
+    d.setHours(parseInt(parts[0], 10), parseInt(parts[1], 10), 0, 0);
+  } else {
+    d.setHours(20, 0, 0, 0);
+  }
+  return d;
+}
+
+function startCountdown(){
+  if (countdownTimer) clearInterval(countdownTimer);
+  const target = getEncontroDate();
+  const box = document.getElementById("countdown");
+  if (!target){
+    box.style.display = "none";
+    return;
+  }
+  box.style.display = "";
+
+  function tick(){
+    const now = new Date();
+    let diff = target - now;
+    if (diff <= 0){
+      document.getElementById("cd-d").textContent = "00";
+      document.getElementById("cd-h").textContent = "00";
+      document.getElementById("cd-m").textContent = "00";
+      document.getElementById("cd-s").textContent = "00";
+      box.classList.add("done");
+      clearInterval(countdownTimer);
+      return;
+    }
+    const dias = Math.floor(diff / 86400000);
+    diff %= 86400000;
+    const horas = Math.floor(diff / 3600000);
+    diff %= 3600000;
+    const mins = Math.floor(diff / 60000);
+    diff %= 60000;
+    const segs = Math.floor(diff / 1000);
+    document.getElementById("cd-d").textContent = String(dias).padStart(2,"0");
+    document.getElementById("cd-h").textContent = String(horas).padStart(2,"0");
+    document.getElementById("cd-m").textContent = String(mins).padStart(2,"0");
+    document.getElementById("cd-s").textContent = String(segs).padStart(2,"0");
+  }
+  tick();
+  countdownTimer = setInterval(tick, 1000);
+}
+
+function launchConfetti(){
+  const dataFormatada = escolha
+    ? escolha.toLocaleDateString("pt-BR", { day:"2-digit", month:"long", year:"numeric" })
+    : "";
+  const horaTxt = horario ? " às " + horario : "";
+  document.getElementById("final-date").textContent = escolha
+    ? "Dia " + dataFormatada + horaTxt + ", então. Guarda esse dia."
+    : "";
+
+  const colors = ["#E07A29","#9A3B12","#C2410C","#F4C79A"];
+  const wrap = document.getElementById("confetti");
+  for (let i = 0; i < 60; i++){
+    const piece = document.createElement("div");
+    piece.className = "confetti-piece";
+    piece.style.left = Math.random() * 100 + "vw";
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.animationDuration = (2.2 + Math.random() * 1.6) + "s";
+    piece.style.animationDelay = (Math.random() * 0.6) + "s";
+    wrap.appendChild(piece);
+    setTimeout(() => piece.remove(), 4500);
+  }
+}
+
+renderStamps();
+</script>
+</body>
+</html>
